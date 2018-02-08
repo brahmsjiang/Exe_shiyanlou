@@ -4,15 +4,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>	//read,write
 //#include <error.h>
-#include <sys/select.h>
 #include <string.h>	//strcmp,strlen
 #include <dirent.h>	//opendir
-
-#define FILE_PATH "./test.txt"
-#define MICE_DEV "/dev/input/mice"
-#define BUF_MAX	100
 
 int main(int argc, char* argv[])
 {
