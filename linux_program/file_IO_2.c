@@ -7,7 +7,8 @@
 #include <unistd.h>	//read,write
 //#include <error.h>
 #include <sys/select.h>
-#include <string.h>	//strcmp
+#include <string.h>	//strcmp,strlen
+#include <dirent.h>	//opendir
 
 #define FILE_PATH "./test.txt"
 #define MICE_DEV "/dev/input/mice"
@@ -15,106 +16,92 @@
 
 int main(int argc, char* argv[])
 {
-
-	//int open(const str* pathname, int oflag, [..., mode_t mode])	==>ret:fd;-1 is err
-	//ssize_t read(int fd, void* buf, size_t count)		==>ret:read bytes;0 is atend;-1 is err
-	//ssize_t write(int fd, const void* buf, size_t count)	==>ret:write bytes;-1 is err
-	//off_t lseek(int filesdes, off_t offset, int whence)	==>ret:offset bytes;-1 is err
-	//ssize<==>signed int	size_t<==>unsigned int	off_t<==>signed int
-	int fd;
-	if((fd=open(FILE_PATH,O_RDWR|O_CREAT|O_TRUNC,0666))<0){	//why 0666 and result is -rw-rw-r-- ?
-		perror("open");
-		//exit(-1);
-	}else{
-		printf("open success\n");
+	//int stat(const char* path, struct stat* buf)	==>ret:0 is success;i is err
+	/*
+	struct stat {
+    dev_t       st_dev;
+    ino_t       st_ino;
+    mode_t      st_mode;
+    nlink_t     st_nlink;
+    uid_t       st_uid;
+    gid_t       st_gid;
+    dev_t       st_rdev;
+    off_t       st_size;
+    blksize_t   st_blksize;
+    blkcnt_t    st_blocks;
+    time_t      st_atime;
+    time_t      st_mtime;
+    time_t      st_ctime;
+	};
+	*/
+	struct stat statbuf;
+	char file_mode[80];
+	if(argc != 2){
+		printf("Usage: stat <pathname>\n");
+		exit(-1);
 	}
-
-	char buf[BUF_MAX];
-	int num = 0;
-	//get keyboard input
-	if((num=read(STDIN_FILENO, buf, BUF_MAX))<0){
-		perror("read");	//perror(),exit()?
-	}else{
-		//output to screen and test.txt
-		write(STDOUT_FILENO, buf, num);
-		if((num=write(fd,buf,num))<0){
-			perror("write");
-		}
+	if(stat(argv[1],&statbuf)!=0){
+		perror("stat err");
+		exit(-1);
 	}
+	if(S_ISREG(statbuf.st_mode))
+		strcpy(file_mode,"-");
+	else if(S_ISDIR(statbuf.st_mode))
+		strcpy(file_mode,"d");
+	else if(S_ISCHR(statbuf.st_mode))
+		strcpy(file_mode,"c");
+	else if(S_ISBLK(statbuf.st_mode))
+		strcpy(file_mode,"b");
+	else if(S_ISLNK(statbuf.st_mode))
+		strcpy(file_mode,"l");
+	else if(S_ISSOCK(statbuf.st_mode))
+		strcpy(file_mode,"s");
+	/////////////////////////////////////////
+	if(statbuf.st_mode|S_IRWXU)
+		strcat(file_mode,"|RWXU");
+	else if(statbuf.st_mode|S_IRUSR)
+		strcat(file_mode,"|RUSR");
+	else if(statbuf.st_mode|S_IWUSR)
+		strcat(file_mode,"|WUSR");
+	else if(statbuf.st_mode|S_IXUSR)
+		strcat(file_mode,"|XUSR");
 
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-	lseek(fd,2,SEEK_SET);
-	
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-	lseek(fd,-2,SEEK_END);	//last char is enter,so move to the pos before enter
+	printf("#i-node:	%ld\n",statbuf.st_ino);
+	printf("#link:		%ld\n",statbuf.st_nlink);
+	printf("UID:		%d\n",statbuf.st_uid);
+	printf("GID:		%d\n",statbuf.st_gid);
+	printf("Size:		%ld\n",statbuf.st_size);	
+	printf("Mode:		%s\n",file_mode);
 
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-	lseek(fd,-4,SEEK_CUR);	//when read 1 char, pos will move 1 automatically
-
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-	lseek(fd,1,SEEK_CUR);
-
-	read(fd,buf,1);
-	write(STDOUT_FILENO,buf,1);printf("\n");
-
-
-	//	/dev/input/mice is devfile of mouse
-	//in POSIX program:
-	//0==>STDIN_FILENO(default keyborad)
-	//1==>STDOUT_FILENO(default screen)
-	//2==>STDERR_FILENO(default screen)
-	read(0,buf,BUF_MAX);	//block untile keyboard input
-	if((fd=open(MICE_DEV,O_RDONLY))<0){
-		perror("open mice");
-	}else{
-		printf("open mice success\n");
-		read(fd,buf,BUF_MAX);
+	/////////////////////////////////////////
+	//DIR* opendir(const char* name)	==>ret:dir stream;NULL is err
+	//struct dirent* readdir(DIR* dir)	==>ret:subdir of dir;NULL is err or readend
+	/*
+	struct dirent {
+   		ino_t   d_ino;
+   		off_t   d_off;
+   		unsigned short  d_reclen;
+   		unsigned char   d_type;
+   		char    d_name[256];
+   	}
+   */
+   //int closedir(DIR* dir)	==>ret:0 is success;-1 is err and reason at errno
+	DIR* dp;
+	struct dirent* entp;
+	if(argc!=2){
+		printf("usage: showdir dirname\n");
+		exit(0);
 	}
-
-	//int select(int maxfd, fd_set* readset, fd_set* writeset, \
-	// \fd_set* exceptset, const struct timeval* timeout)
-	//==>ret:num of fd changed in readset/writeset/exceptset;-1 is err;0 is timeout
-	fd_set rfds;
-	struct timeval tv;
-	int retval, fd1;
-	char buf1[BUF_MAX];
-
-	fd1=open(MICE_DEV,O_RDONLY);
-	while(1){
-		FD_ZERO(&rfds);
-		FD_SET(0,&rfds);
-		FD_SET(fd1,&rfds);
-		tv.tv_sec=3;
-		tv.tv_usec=0;
-
-		retval=select(fd1+1,&rfds,NULL,NULL,&tv);	//why maxfd=fd+1?
-		if(retval<0)	perror("select err");
-		else if(retval==0)	printf("Nodata within 3 sec\n");
-		else{
-			if(FD_ISSET(0,&rfds)){
-				printf("Data is available from keyboard now\n");
-				memset(buf1,0,sizeof(buf1));
-				read(0,buf1,BUF_MAX);
-				printf("received buf is: %s\n",buf1);
-				if(strncmp(buf1,"exit",strlen("exit"))==0){
-					printf("break loop!!!!!!!!\n");
-					break;
-				}
-			}
-			if(FD_ISSET(fd1,&rfds)){
-				printf("Data is available from mouse now\n");
-				memset(buf1,0,sizeof(buf1));
-				read(fd1,buf1,BUF_MAX);
-			}
-		}
+	if((dp=opendir(argv[1]))==NULL){
+		perror("opendir");
+		exit(-1);
 	}
-	
+	printf("<===========>\n");
+	while((entp=readdir(dp))!=NULL)
+		printf("%s\n",entp->d_name);
+	closedir(dp);
+	printf("<============>\n");
+
 	return 0;
 }
 
