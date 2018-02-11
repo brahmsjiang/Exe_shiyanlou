@@ -47,6 +47,29 @@ int main(int argc, char* argv[], char* envp[])
 		printf("%s\n",*ptr);
 
 	printf("\n\n--------My environment variable--------\n\n");
+	printf("USERNAME is %s\n",getenv("USERNAME"));
+
+	putenv("USERNAME=brahmsjiang");
+	printf("USERNAME is %s\n",getenv("USERNAME"));
+
+	setenv("USERNAME","brahmsjiang-2",0);
+	printf("USERNAME is %s\n",getenv("USERNAME"));
+
+	setenv("USERNAME","brahmsjiang-2",1);
+	printf("USERNAME is %s\n",getenv("USERNAME"));
+///////////////////////////////////////////////////
+	printf("FUCK is %s\n",getenv("FUCK"));
+
+	putenv("FUCK=jiang");
+	printf("FUCK is %s\n",getenv("FUCK"));
+
+	setenv("FUCK","brahmsjiang-3",0);
+	printf("FUCK is %s\n",getenv("FUCK"));
+
+	setenv("FUCK","brahmsjiang-4",1);
+	printf("FUCK is %s\n",getenv("FUCK"));
+
+
 	return 0;
 }
 
