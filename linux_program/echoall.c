@@ -6,7 +6,9 @@
  ************************************************************************/
 
 #include<stdio.h>
+//#include<unistd.h>	//char** environ
 
+extern char** environ;
 int main(int argc,char* argv[],char* envp[])
 {
 	//int execl(const* char pathname, const char* arg0, ..., (char*)0, const* const envp[])
@@ -15,11 +17,13 @@ int main(int argc,char* argv[],char* envp[])
 	
 	int i;
 	char** ptr;
-	extern char** environ;
 	for(i=0; i<argc; ++i)
 		printf("argv[%d]:	%s\n",i,argv[i]);
 	printf("===========================================\n");
-	for(ptr=environ; *ptr!=0; ptr++)
+	for(ptr=environ; *ptr!=0; ptr++)	//print environment 1st
 		printf("%s\n",*ptr);
+	printf("===========================================\n");
+	for(i=0; envp[i]!=NULL; ++i)	//print environment 2nd
+		printf("argv[%d]:	%s\n",i,envp[i]);
 	return 0;
 }
